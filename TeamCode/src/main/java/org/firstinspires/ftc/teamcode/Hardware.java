@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -18,6 +19,9 @@ public class Hardware {
     public DcMotor En2;
     public DcMotor En3;
 
+    //example for pid control
+    public DcMotorEx PIDC;
+
     //servos!
     //public CRServo name;
     //public Servo name;
@@ -25,6 +29,8 @@ public class Hardware {
     //variables
     public double[] GlobalPos; // x-0 y-1 a-2
     public double[] PreviousE; // 1-0 2-1 3-2
+    public double lastError = 0;
+    public double sumofErrors = 0;
 
     HardwareMap hardwareMap;
 
@@ -53,6 +59,12 @@ public class Hardware {
         DM2.setDirection(DcMotor.Direction.REVERSE); //                           front
         DM4.setDirection(DcMotor.Direction.REVERSE); //motors are layed out like 1^^^^^2
                                                      //                          3^^^^^4
+
+        //example for PID
+        PIDC = this.hardwareMap.get(DcMotorEx.class, "PIDC");
+        PIDC.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        PIDC.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+
         //odometry encoders
         En1 = this.hardwareMap.get(DcMotor.class, "En1");
         En2 = this.hardwareMap.get(DcMotor.class, "En2");
@@ -127,9 +139,25 @@ public class Hardware {
 
     }
 
-    public void setDMSpeed(double s1, double s2, double s3, double s4) {
+    public void setPIDCSpeed(double targetSpeed) {
 
-        
+        double kp = 1;
+        double ki = 1;
+        double kd = 1;
+        double sumLimit = 1;
+        double error = targetSpeed - PIDC.getVelocity();
+        double output = (kp * error) + (ki * sumofErrors) + (kd * (error - lastError));
+        if (output > 1) {
+            output = 1;
+        }
+        else if (output < -1) {
+            output = -1;
+        }
+        PIDC.setPower(output);
+        lastError = error;
+        if ((sumofErrors < sumLimit && sumofErrors > -sumLimit) || (sumofErrors > sumLimit && error < 0) || (sumofErrors < -sumLimit && error > 0)) {
+            sumofErrors += error;
+        }
 
     }
 
