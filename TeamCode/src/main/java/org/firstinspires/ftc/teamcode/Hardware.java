@@ -5,6 +5,12 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
 
 public class Hardware {
 
@@ -25,6 +31,10 @@ public class Hardware {
     //servos!
     //public CRServo name;
     //public Servo name;
+
+    //webcam
+    public WebcamName webcam;
+    public OpenCvCamera camera;
 
     //variables
     public double[] GlobalPos; // x-0 y-1 a-2
@@ -79,6 +89,22 @@ public class Hardware {
         //name = this.hardwareMap.get(Servo.class, "name");
         //name.setPosition(Position);
 
+        //webcam
+        webcam = hardwareMap.get(WebcamName.class, "NAME_OF_CAMERA_IN_CONFIG_FILE");
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        camera = OpenCvCameraFactory.getInstance().createWebcam(webcam, cameraMonitorViewId);
+
+
+    }
+
+    public void powerControl(double one, double two, double three, double four) {
+
+        DM1.setPower(one);
+        DM2.setPower(two);
+        DM3.setPower(three);
+        DM4.setPower(four);
+
+
     }
 
     public void updateLocation() {
@@ -108,26 +134,26 @@ public class Hardware {
         de2 = wheelCircumference * (e2 - PreviousE[1]) / ticksPerRotation;
         de3 = wheelCircumference * (e3 - PreviousE[2]) / ticksPerRotation;
         a = (de2 - de1) / (d1 + d2);
-        r1 = (de2 / a) - d2;
-        r2 = (de3 / a) - d3;
-        t1 = 2 * r1 * Math.sin(a / 2);
-        t2 = 2 * r2 * Math.sin(a / 2);
-        tt = Math.hypot(t1, t2);
-        ta = Math.atan2(t2, t1);
-        ata = ta + ga + (a / 2);
-        x = Math.sin(ata) * tt;
-        y = Math.cos(ata) * tt;
+        if (a == 0) {
+            x = de1;
+            y = de3;
+        }
+        else {
+            r1 = (de2 / a) - d2;
+            r2 = (de3 / a) - d3;
+            t1 = 2 * r1 * Math.sin(a / 2);
+            t2 = 2 * r2 * Math.sin(a / 2);
+            tt = Math.hypot(t1, t2);
+            ta = Math.atan2(t2, t1);
+            ata = ta + ga + (a / 2);
+            x = Math.sin(ata) * tt;
+            y = Math.cos(ata) * tt;
+        }
         gx += x;
         gy += y;
         ga += a;
 
-        while (ga > Math.PI) {
-            ga -= Math.PI;
-        }
-
-        while (ga < -Math.PI) {
-            ga += Math.PI;
-        }
+        MathFunctions.angleWrap(ga);
 
         PreviousE[0] = e1;
         PreviousE[1] = e2;
@@ -161,5 +187,42 @@ public class Hardware {
 
     }
 
+    public void moveToPosition(double endX, double endY, double turnSpeed, double movementSpeed, double preferredAngle) {
+
+        double cx = GlobalPos[0];
+        double cy = GlobalPos[1];
+        double ca = GlobalPos[2];
+        double distanceToPoint = Math.hypot((endX - cx), (endY - cy));
+        double relativeAngleToPoint = MathFunctions.angleWrap(ca - Math.atan2((endY - cy), (endX - cx)));
+        double relativeXToPoint = Math.cos(relativeAngleToPoint) * distanceToPoint;
+        double relativeYToPoint = Math.sin(relativeAngleToPoint) * distanceToPoint;
+        double xPower = relativeXToPoint * movementSpeed;
+        double yPower = relativeYToPoint * movementSpeed;
+        double turnPower = Range.clip((relativeAngleToPoint + preferredAngle) / Math.toRadians(30), -1, 1) * turnSpeed;
+        if (distanceToPoint > 3) {
+            turnPower = 0;
+        }
+
+        powerControl(yPower + xPower + turnPower,
+                     yPower - xPower - turnPower,
+                    yPower - xPower + turnPower,
+                     yPower + xPower - turnPower);
+
+    }
+
+    public void startVision() {
+
+        Pipeline pipeline = new Pipeline();
+
+        camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
+            @Override
+            public void onOpened()
+            {
+                camera.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);            }
+        });
+
+        camera.setPipeline(pipeline);
+
+    }
 
 }
