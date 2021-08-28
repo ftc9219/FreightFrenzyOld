@@ -1,11 +1,12 @@
 package org.firstinspires.ftc.teamcode;
 import org.opencv.core.Point;
 import java.util.ArrayList;
-import java.util.List;
 
 public class PurePursuit {
 
-     private List<Point> points = new ArrayList<Point>();
+    Hardware hardware = new Hardware();
+
+     private ArrayList<Point> points = new ArrayList<Point>();
 
      public void clearPoints() {
          points.clear();
@@ -15,7 +16,17 @@ public class PurePursuit {
          Point point = new Point(x, y);
          points.add(point);
      }
-     
+
+     public void followPath() {
+
+         double x = hardware.GlobalPos[0];
+         double y = hardware.GlobalPos[1];
+         double a = hardware.GlobalPos[2];
+         double acceleration = 1;
+
+
+     }
+
 
 }
 
