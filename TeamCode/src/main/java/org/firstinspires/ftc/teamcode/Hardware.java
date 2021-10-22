@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -25,12 +24,19 @@ public class Hardware {
     public DcMotor En2;
     public DcMotor En3;
 
-    //example for pid control
-    public DcMotorEx PIDC;
+    //arm motor
+    public DcMotorEx aM;
 
-    //servos!
+    //carousel motor
+    public DcMotorEx cM;
+
+    //carousel servo
+    public Servo cS;
+
     //public CRServo name;
-    //public Servo name;
+
+    public Servo aS; //arm servo
+    public Servo gS; //grabber servo
 
     //webcam
     public WebcamName webcam;
@@ -70,10 +76,15 @@ public class Hardware {
         DM4.setDirection(DcMotor.Direction.REVERSE); //motors are layed out like 1^^^^^2
                                                      //                          3^^^^^4
 
-        //example for PID
-        PIDC = this.hardwareMap.get(DcMotorEx.class, "PIDC");
-        PIDC.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        PIDC.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        //arm motor
+        aM = this.hardwareMap.get(DcMotorEx.class, "aM");
+        aM.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        aM.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+
+        //carousel motor
+        cM = this.hardwareMap.get(DcMotorEx.class, "cM");
+        cM.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        cM.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
 
         //odometry encoders
         En1 = this.hardwareMap.get(DcMotor.class, "En1");
@@ -85,9 +96,18 @@ public class Hardware {
         En3.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         //servos
+
         //name = this.hardwareMap.get(CRServo.class, "name");
-        //name = this.hardwareMap.get(Servo.class, "name");
-        //name.setPosition(Position);
+
+        //
+        aS = this.hardwareMap.get(Servo.class, "aS");
+        aS.setPosition(90);
+
+        gS = this.hardwareMap.get(Servo.class, "gS");
+        gS.setPosition(0);
+
+        cS = this.hardwareMap.get(Servo.class, "cS");
+        cS.setPosition(0);
 
         //webcam
         webcam = hardwareMap.get(WebcamName.class, "webcam");
@@ -135,8 +155,9 @@ public class Hardware {
         de3 = wheelCircumference * (e3 - PreviousE[2]) / ticksPerRotation;
         a = (de2 - de1) / (d1 + d2);
         if (a == 0) {
-            x = de1;
-            y = de3;
+            t1 = Math.sqrt(Math.pow(de1, 2) + Math.pow(de3, 2));
+            x = t1 * Math.cos(ga);
+            y = t1 * Math.sin(ga);
         }
         else {
             r1 = (de2 / a) - d2;
@@ -165,13 +186,33 @@ public class Hardware {
 
     }
 
-    public void setPIDCSpeed(double targetSpeed) {
+    public void setSpinSpeed(double rPM) {
+
+        cM.setVelocity(rPM * 1680 / 60);
+
+    }
+
+    public void setCarouselPosition() {
+
+        cS.setPosition(0);
+
+    }
+
+    public void resetArmPosition() {
+
+        aM.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        aM.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        aS.setPosition(180);
+
+    }
+
+    public void armPID(double targetPosition) {
 
         double kp = 1;
         double ki = 1;
-        double kd = 1;
+        double kd = -1;
         double sumLimit = 1;
-        double error = targetSpeed - PIDC.getVelocity();
+        double error = targetPosition - aM.getCurrentPosition();
         double output = (kp * error) + (ki * sumofErrors) + (kd * (error - lastError));
         if (output > 1) {
             output = 1;
@@ -179,11 +220,30 @@ public class Hardware {
         else if (output < -1) {
             output = -1;
         }
-        PIDC.setPower(output);
+        aM.setPower(output);
         lastError = error;
         if ((sumofErrors < sumLimit && sumofErrors > -sumLimit) || (sumofErrors > sumLimit && error < 0) || (sumofErrors < -sumLimit && error > 0)) {
             sumofErrors += error;
         }
+
+    }
+
+    public void setArmPosition(double degree) {
+
+        //1680 ticks per rotation
+        armPID((degree - 30) * 168 / 36);
+        if (degree < 180) {
+            aS.setPosition((int)(180 - degree));
+        }
+        else {
+            aS.setPosition((int)(360 - degree));
+        }
+
+    }
+
+    public void setGrabber(double pos) {
+
+        gS.setPosition(pos);
 
     }
 
@@ -199,7 +259,7 @@ public class Hardware {
         double xPower = relativeXToPoint * movementSpeed;
         double yPower = relativeYToPoint * movementSpeed;
         double turnPower = Range.clip((relativeAngleToPoint + preferredAngle) / Math.toRadians(30), -1, 1) * turnSpeed;
-        if (distanceToPoint > 3) {
+        if (distanceToPoint > 12) {
             turnPower = 0;
         }
 
@@ -212,7 +272,7 @@ public class Hardware {
 
     public void startVision() {
 
-        Pipeline pipeline = new Pipeline();
+        DuckPipeline pipeline = new DuckPipeline();
 
         camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
             @Override

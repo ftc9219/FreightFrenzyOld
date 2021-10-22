@@ -10,8 +10,15 @@ public class PurePursuit {
 
      private int currentLine = 0;
 
+     private double distanceToTurn;
+
+     private double turnAngle;
+
+     public boolean pathDone;
+
      public void clearPoints() {
          points.clear();
+         currentLine = 0;
      }
 
      public void addPoint(double x, double y) {
@@ -19,15 +26,21 @@ public class PurePursuit {
          points.add(point);
      }
 
-    public void followPath(Point one, Point two) {
-
-        Hardware hardware = new Hardware();
+     public void followPath() {
 
         Point point;
+        Point one = points.get(currentLine);
+        Point two = points.get(currentLine + 1);
         double radius = 1;
 
-        int i = 0;
-        if (i < points.size()) {
+        if (currentLine < points.size()) {
+            pathDone = false;
+        }
+        else {
+            pathDone = true;
+        }
+
+        if (!pathDone) {
             double gx = hardware.GlobalPos[0];
             double gy = hardware.GlobalPos[1];
             double d = Math.sqrt(Math.pow(gy - two.y, 2) + Math.pow(gx - two.x, 2));
@@ -49,16 +62,22 @@ public class PurePursuit {
                     yIntercept2 += gy;
                     if (Math.abs(two.x - xIntercept1) < Math.abs(two.x - xIntercept2)) {
                         point = new Point(xIntercept1, yIntercept1);
-                    } else {
+                    }
+                    else {
                         point = new Point(xIntercept2, yIntercept2);
                     }
-                } else {
-                    double pX = -b / (m + 1 / m);
-                    double pY = pX * m + b;
-                    point = new Point(pX, pY);
                 }
-            } else {
-                i++;
+                else {
+                    double m2 = -1 / m;
+                    double pX = b / (m2 - m);
+                    double pY = ((pX * m) + b) + gy;
+                    pX += gx;
+                    point = new Point(pX, pY);
+                    distanceToTurn = Math.hypot((gx - point.x), (gy - point.y));
+                }
+            }
+            else {
+                currentLine++;
             }
         }
     }
