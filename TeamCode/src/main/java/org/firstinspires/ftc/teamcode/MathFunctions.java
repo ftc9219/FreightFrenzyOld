@@ -4,7 +4,8 @@ import org.opencv.core.Point;
 
 public class MathFunctions {
 
-    public Point lineCircleIntercept(Point one, Point two, double gx, double gy, double radius) {
+    public static Point lineCircleIntercept(Point one, Point two, double gx, double gy, double radius) {
+        Point point;
         double m = (two.y - one.y) / (two.x - one.x);
         double y1 = one.y - gy;
         double x1 = one.x - gx;

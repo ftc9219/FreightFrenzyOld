@@ -29,12 +29,14 @@ public class PurePursuit {
      public void followPath() {
 
         Point point;
+        double speed = getSpeed();
         Point one = points.get(currentLine);
         Point two = points.get(currentLine + 1);
         double radius = 1;
 
         if (currentLine < points.size()) {
             pathDone = false;
+            return;
         }
         else {
             pathDone = true;
@@ -45,42 +47,24 @@ public class PurePursuit {
             double gy = hardware.GlobalPos[1];
             double d = Math.sqrt(Math.pow(gy - two.y, 2) + Math.pow(gx - two.x, 2));
             if (d < 3) {
-                double m = (two.y - one.y) / (two.x - one.x);
-                double y1 = one.y - gy;
-                double x1 = one.x - gx;
-                double b = y1 - (m * x1);
-                double quadratic = Math.pow(radius, 2) + (Math.pow(m, 2) * Math.pow(radius, 2)) - Math.pow(b, 2);
-
-                if (quadratic >= 0) {
-                    double xIntercept1 = ((-b * m) + Math.sqrt(quadratic)) / (Math.pow(m, 2) + 1);
-                    double yIntercept1 = (m * xIntercept1) + b;
-                    xIntercept1 += gx;
-                    yIntercept1 += gy;
-                    double xIntercept2 = -((b * m) + Math.sqrt(quadratic)) / (Math.pow(m, 2) + 1);
-                    double yIntercept2 = (m * xIntercept2) + b;
-                    xIntercept2 += gx;
-                    yIntercept2 += gy;
-                    if (Math.abs(two.x - xIntercept1) < Math.abs(two.x - xIntercept2)) {
-                        point = new Point(xIntercept1, yIntercept1);
-                    }
-                    else {
-                        point = new Point(xIntercept2, yIntercept2);
-                    }
-                }
-                else {
-                    double m2 = -1 / m;
-                    double pX = b / (m2 - m);
-                    double pY = ((pX * m) + b) + gy;
-                    pX += gx;
-                    point = new Point(pX, pY);
-                    distanceToTurn = Math.hypot((gx - point.x), (gy - point.y));
-                }
+                point = MathFunctions.lineCircleIntercept(one, two, gx, gy, radius);
+                hardware.moveToPosition(point.x, point.y, .5, speed, 0);
             }
             else {
                 currentLine++;
             }
         }
-    }
+     }
+
+     public double getSpeed() {
+
+        double speed = 1;
+
+
+
+        return speed;
+
+     }
 
 
 }
